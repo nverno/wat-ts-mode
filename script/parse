@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
+TSDIR="$(realpath "$DIR/../tree-sitter-wasm/wat")"
+
+parse() {
+    local f="${1?}"
+    cd "$TSDIR" && npx tree-sitter parse "$DIR/$f"
+}
+parse "$@"
