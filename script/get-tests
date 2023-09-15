@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -o nounset -o pipefail -o errexit
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
+TESTDIR="$DIR/../test/parse"
+
+get_tests() {
+    local testdir="$TESTDIR"
+    local gitdir='test/parse'
+    local suffix='.wast'
+    while (( "$#" )); do
+        case "$1" in
+            --test-dir) testdir="$2"; shift;;
+            --git-dir) gitdir="$2"; shift;;
+            --test-suffix) suffix="$2?"; shift;;
+            *) echo -e "\e[40m\e[1;32mUsage: $0 [--test-dir]\e[0m";usage && exit 1;;
+        esac
+        shift || true
+    done
+
+    mkdir -p "$testdir"
+    cd "$testdir"
+
+    git init
+    git remote add origin -f https://github.com/WebAssembly/wabt
+    git config core.sparseCheckout true
+    echo "$gitdir/*" >> .git/info/sparse-checkout
+    git pull origin main
+
+    cd "$gitdir" &&
+        find . -type f -iname '*.txt' \
+             -exec sh -c "mv \"\$1\" \"\${1%.txt}\"$suffix" _ {} \;
+}
+
+get_tests "$@"

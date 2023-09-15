@@ -75,11 +75,31 @@
   `((wat
      ((parent-is "ROOT") parent 0)
      ((node-is ")") parent-bol 0)
+     ((node-is "end") parent-bol 0)
      ((parent-is "module_field") parent-bol wat-ts-mode-indent-level)
      ((parent-is "instr_list") first-sibling 0)
      (no-node parent-bol wat-ts-mode-indent-level)
      (catch-all parent-bol wat-ts-mode-indent-level)))
   "Tree-sitter indentation rules for wat.")
+
+(defvar wat-ts-mode--keywords
+  '(
+    "elem"
+    "export"
+    "module"
+    "memory"
+    "data"
+    "table"
+    "func"
+    "block"
+    "end"
+    "result"
+    "param"
+    "type"
+    "loop"
+    "import"
+    ;; "return"
+    ))
 
 (defvar wat-ts-mode--builtins
   '())
@@ -91,7 +111,7 @@
   '())
 
 ;;; TODO: separate wat/wast, types, keywords
-(defvar wat-ts-mode--keywords
+(defvar wat-ts-mode---keywords
   '("array" "assert_exception" "assert_exhaustion" "assert_invalid" "assert_malformed"
     "assert_return" "assert_trap" "assert_unlinkable" "atomic.fence" "binary" "block" "br"
     "br_if" "br_table" "call" "call_indirect" "call_ref" "catch" "catch_all" "data"
@@ -219,12 +239,66 @@
    '((string) @font-lock-string-face)
    
    :language 'wat
-   :feature 'constant
-   '((nat) @font-lock-number-face)
+   :feature 'number
+   '([(nat) (float) (nan)] @font-lock-number-face)
 
    :language 'wat
+   :feature 'type
+   '([(value_type) (ref_type) (ref_kind) (elem_kind)] @font-lock-type-face
+     (global_type_mut "mut" @font-lock-type-face))
+
+   :language 'wat
+   :feature 'definition
+   '((module
+      identifier: (identifier) @font-lock-function-name-face)
+
+     (module_field_func
+      identifier: (identifier) @font-lock-function-name-face)
+
+     ;; (import_desc_func_type (identifier) @font-lock-function-name-face)
+     ;; (import_desc_type_use (identifier) @font-lock-function-name-face)
+     
+     (identifier) @font-lock-variable-name-face
+
+     ;; (module_field_type
+     ;;  identifier: (identifier) @font-lock-variable-name-face)
+
+     ;; (module_field_table
+     ;;  identifier: (identifier) @font-lock-variable-name-face)
+
+     ;; (module_field_memory
+     ;;  identifier: (identifier) @font-lock-variable-name-face)
+
+     ;; (module_field_global
+     ;;  identifier: (identifier) @font-lock-variable-name-face)
+
+     ;; (import_desc_func_type (identifier) @font-lock-variable-name-face)
+
+     ;; (index (identifier) @font-lock-variable-name-face)
+     )
+   
+   :language 'wat
+   :feature 'keyword
+   `([,@wat-ts-mode--keywords] @font-lock-keyword-face
+     (module_field_elem
+      ["elem" "declare"] @font-lock-keyword-face))
+
+   :language 'wat
+   :feature 'instruction
+   '([(pat00) (pat01)] @font-lock-builtin-face
+     (instr_list_call "call_indirect" @font-lock-builtin-face) 
+     (instr_plain
+      [(_) "ref.null" "table.init"] @font-lock-builtin-face))
+     
+   :language 'wat
    :feature 'bracket
-   '(("(" ")") @font-lock-bracket-face))
+   '(("(" ")") @font-lock-bracket-face)
+
+   :language 'wat
+   :feature 'error
+   :override t
+   '((ERROR) @font-lock-warning-face)
+   )
   "Tree-sitter font-lock settings for wat.")
 
 ;;;###autoload
@@ -247,12 +321,10 @@
   ;; Font-Locking
   (setq-local treesit-font-lock-settings wat-ts-mode--font-lock-settings)
   (setq-local treesit-font-lock-feature-list
-              '(( comment definition)
-                ( keyword variable string)
-                ( builtin-variable builtin-function
-                  assignment constant number delimiter
-                  escape-sequence interpolation property)
-                ( bracket operator function error)))
+              '(( comment string definition)
+                ( keyword type variable instruction)
+                ( constant number escape-sequence)
+                ( bracket operator error)))
   
   ;; Imenu
   ;; (setq-local treesit-simple-imenu-settings
@@ -272,6 +344,37 @@
 
 (if (treesit-ready-p 'wat)
     (add-to-list 'auto-mode-alist '("\\.\\(?:wa\\(?:s?t\\)\\)\\'" . wat-ts-mode)))
+
+;; -------------------------------------------------------------------
+;;; Wast
+
+(defvar wast-ts-mode--commands
+  '(
+    "action"
+    "assert_invalid"
+    "assert_malformed"
+    "assert_return"
+    "assert_invalid"
+    ;; "assert_return_arithmetic_nan"
+    ;; "assert_return_canonical_nan"
+    ;; "assert_trap"
+    "assert_unlinkable"
+    "assert_uninstantiable"
+    "assert_exhaustion"
+    "assert_exception"
+    ;; "assertion:"
+    "binary"
+    "get"
+    "input"
+    "invoke"
+    ;; "meta:"
+    ;; "module:"
+    "module"
+    "output"
+    "quote"
+    "register"
+    ;; "script:"
+    ))
 
 (provide 'wat-ts-mode)
 ;; Local Variables:

@@ -1,10 +1,24 @@
 #!/usr/bin/env bash
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
-TSDIR="$(realpath "$DIR/../tree-sitter-wasm/wat")"
+TS_DIR="${TS_DIR:-$(realpath "$DIR/../../tree-sitter-wasm")}"
 
 parse() {
+    local typ="wat"
+    while (( "$#" )); do
+        case "$1" in
+            -t) typ="$2"
+                [[ "$typ" != "wat" ]] && [[ "$typ" != "wast" ]] &&
+                    echo "unrecognized type $typ" && exit 1
+                shift;;
+            -*) echo "unrecognized $1" && exit 1;;
+            *) break;;
+        esac
+        shift || true
+    done
     local f="${1?}"
-    cd "$TSDIR" && npx tree-sitter parse "$DIR/$f"
+    echo "[INFO] parsing $DIR/$f"
+    cd "$TS_DIR/$typ" && npx tree-sitter parse "$DIR/../$f"
 }
+
 parse "$@"
