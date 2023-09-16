@@ -53,7 +53,6 @@
 
 (require 'treesit)
 
-
 (defgroup wat nil
   "Customization variables for Wasm/Wat modes."
   :group 'languages)
@@ -75,43 +74,23 @@
   `((wat
      ((parent-is "ROOT") parent 0)
      ((node-is ")") parent-bol 0)
+     ((node-is ";)") parent-bol 0)
+     ((node-is "else") parent-bol 0)
      ((node-is "end") parent-bol 0)
      ((parent-is "module_field") parent-bol wat-ts-mode-indent-level)
      ((parent-is "instr_list") first-sibling 0)
+     ((parent-is "comment_block") first-sibling 0)
      (no-node parent-bol wat-ts-mode-indent-level)
      (catch-all parent-bol wat-ts-mode-indent-level)))
   "Tree-sitter indentation rules for wat.")
 
 (defvar wat-ts-mode--keywords
-  '(
-    "elem"
-    "export"
-    "module"
-    "memory"
-    "data"
-    "table"
-    "func"
-    "block"
-    "end"
-    "result"
-    "param"
-    "type"
-    "loop"
-    "import"
-    ;; "return"
-    ))
-
-(defvar wat-ts-mode--builtins
-  '())
-
-;;; func: funcref anyfunc??
-;;; number: i32 i64 f32 f64
-;;; global: mut
-(defvar wat-ts-mode--types
-  '())
+  '("align" "block" "br_table" "data" "declare" "elem" "else" "end" "export"
+    "func" "global" "if" "import" "item" "let" "local" "loop" "memory" "module"
+    "offset" "param" "result" "select" "start" "table" "then" "type"))
 
 ;;; TODO: separate wat/wast, types, keywords
-(defvar wat-ts-mode---keywords
+(defvar wat-ts-mode--instructions
   '("array" "assert_exception" "assert_exhaustion" "assert_invalid" "assert_malformed"
     "assert_return" "assert_trap" "assert_unlinkable" "atomic.fence" "binary" "block" "br"
     "br_if" "br_table" "call" "call_indirect" "call_ref" "catch" "catch_all" "data"
@@ -240,12 +219,13 @@
    
    :language 'wat
    :feature 'number
-   '([(nat) (float) (nan)] @font-lock-number-face)
+   '([(nat) (float) (nan) (align_offset_value)] @font-lock-number-face)
 
    :language 'wat
    :feature 'type
    '([(value_type) (ref_type) (ref_kind) (elem_kind)] @font-lock-type-face
-     (global_type_mut "mut" @font-lock-type-face))
+     (global_type_mut "mut" @font-lock-type-face)
+     (memory_type (_ (_) @font-lock-type-face)))
 
    :language 'wat
    :feature 'definition
@@ -254,52 +234,80 @@
 
      (module_field_func
       identifier: (identifier) @font-lock-function-name-face)
-
-     ;; (import_desc_func_type (identifier) @font-lock-function-name-face)
-     ;; (import_desc_type_use (identifier) @font-lock-function-name-face)
      
-     (identifier) @font-lock-variable-name-face
+     (identifier) @font-lock-variable-name-face)
 
-     ;; (module_field_type
-     ;;  identifier: (identifier) @font-lock-variable-name-face)
-
-     ;; (module_field_table
-     ;;  identifier: (identifier) @font-lock-variable-name-face)
-
-     ;; (module_field_memory
-     ;;  identifier: (identifier) @font-lock-variable-name-face)
-
-     ;; (module_field_global
-     ;;  identifier: (identifier) @font-lock-variable-name-face)
-
-     ;; (import_desc_func_type (identifier) @font-lock-variable-name-face)
-
-     ;; (index (identifier) @font-lock-variable-name-face)
-     )
+   :language 'wat
+   :feature 'annotations
+   '(;; FIXME: "(@" should be two separate tokens
+     (annotation
+      "(@" (identifier_pattern) @font-lock-property-use-face)
+     (reserved) @font-lock-constant-face)
    
    :language 'wat
    :feature 'keyword
    `([,@wat-ts-mode--keywords] @font-lock-keyword-face
-     (module_field_elem
-      ["elem" "declare"] @font-lock-keyword-face))
+
+     ([(op_nullary) (op_index)] @kw
+      (:match
+       ,(rx (or "return" "nop" "unreachable" (seq "br" (? (seq "_" (* word))))))
+       @kw))
+     @font-lock-keyword-face)
 
    :language 'wat
    :feature 'instruction
    '([(pat00) (pat01)] @font-lock-builtin-face
-     (instr_list_call "call_indirect" @font-lock-builtin-face) 
-     (instr_plain
-      [(_) "ref.null" "table.init"] @font-lock-builtin-face))
-     
+     (instr_list_call _ @font-lock-builtin-face)
+     (instr_plain _ @font-lock-builtin-face)
+     (op_table_init _ @font-lock-builtin-face))
+
+   :language 'wat
+   :feature 'simd
+   '((op_simd_lane _ @font-lock-builtin-face)
+     (op_simd_const
+      _ @font-lock-builtin-face
+      _ @font-lock-type-face))
+
+   ;; :language 'wat
+   ;; :feature 'exceptions
+   ;; TODO: try/catch/throw/rethrow/delegate
+   ;; not defined in tree sitter grammar
+   
    :language 'wat
    :feature 'bracket
    '(("(" ")") @font-lock-bracket-face)
 
    :language 'wat
+   :feature 'operator
+   '(("=") @font-lock-operator-face)
+   
+   :language 'wat
+   :feature 'escape-sequence
+   :override t
+   '((escape_sequence) @font-lock-escape-face)
+
+   :language 'wat
    :feature 'error
    :override t
-   '((ERROR) @font-lock-warning-face)
-   )
+   '((ERROR) @font-lock-warning-face))
   "Tree-sitter font-lock settings for wat.")
+
+(defun wat-ts-mode--defun-name (node)
+  "Return name for NODE or nil if NODE has no name or is invalid."
+  (treesit-node-text
+   (pcase (treesit-node-type node)
+     ((pred (string-match-p
+             (rx "module"
+                 (? (seq "_field_" (or "func" "memory" "table" "global" "type")))
+                 eos)))
+      (treesit-node-child-by-field-name node "identifier"))
+     (_ (treesit-search-subtree
+         (treesit-node-child node 0 "index") "identifier" nil nil 1)))))
+
+(defun wat-ts-mode--valid-imenu-p (node)
+  "Return nil if NODE shouldn't be included in imenu."
+  (wat-ts-mode--defun-name node))
+
 
 ;;;###autoload
 (define-derived-mode wat-ts-mode prog-mode "Wat"
@@ -322,23 +330,29 @@
   (setq-local treesit-font-lock-settings wat-ts-mode--font-lock-settings)
   (setq-local treesit-font-lock-feature-list
               '(( comment string definition)
-                ( keyword type variable instruction)
+                ( keyword type variable instruction annotations
+                  ;; optionally enabled
+                  simd exceptions)
                 ( constant number escape-sequence)
                 ( bracket operator error)))
   
-  ;; Imenu
-  ;; (setq-local treesit-simple-imenu-settings
-  ;;             `(("Function" "\\`function_definition\\'" nil nil))
-
   ;; Navigation
-  ;; (setq-local treesit-defun-type-regexp
-  ;;             (rx string-start (or "function_definition") string-end))
-  ;; (setq-local treesit-defun-name-function #'wat-ts-mode--defun-name)
-  (setq-local treesit-text-type-regexp (rx (or "comment_line" "comment_block" "string")))
-  ;; (setq-local treesit-sentence-type-regexp
-  ;;             (rx (or wat-ts-mode--treesit-sentence-nodes)))
-  ;; (setq-local treesit-sexp-type-regexp (rx (or wat-ts-mode--treesit-sexp-nodes)))
   ;; (setq-local treesit-defun-prefer-top-level t)
+  (setq-local treesit-defun-name-function #'wat-ts-mode--defun-name)
+  (setq-local treesit-defun-type-regexp (rx bos "module"))
+
+  ;; TODO: navigation objects
+  ;; (setq-local treesit-thing-settings
+  ;;             `((wat
+  ;;                (sexp)
+  ;;                (sentence)
+  ;;                (text ,(rx (or "comment_line" "comment_block" "string"))))))
+
+  ;; Imenu
+  (setq-local treesit-simple-imenu-settings
+              (cl-loop for kind in '("func" "elem" "data" "global" "type" "table" "memory")
+                       collect (list kind (concat "\\`module_field_" kind)
+                                     #'wat-ts-mode--valid-imenu-p nil)))
 
   (treesit-major-mode-setup))
 
@@ -348,6 +362,7 @@
 ;; -------------------------------------------------------------------
 ;;; Wast
 
+;;; TODO: wast script commands
 (defvar wast-ts-mode--commands
   '(
     "action"
