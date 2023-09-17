@@ -49,6 +49,7 @@
 ;;
 ;;; Code:
 
+(eval-when-compile (require 'cl-lib))
 (require 'treesit)
 
 (defcustom wat-ts-mode-indent-level 2
@@ -82,7 +83,34 @@
 (defvar wat-ts-mode--keywords
   '("align" "block" "br_table" "data" "declare" "elem" "else" "end" "export"
     "func" "global" "if" "import" "item" "let" "local" "loop" "memory" "module"
-    "offset" "param" "result" "select" "start" "table" "then" "type"))
+    "offset" "param" "result" "select" "start" "table" "then" "type")
+  "Wat keywords.")
+
+(defvar wat-ts--wast-assertions
+  '("assert_malformed"
+    "assert_return"
+    "assert_invalid"
+    "assert_return_arithmetic_nan"
+    "assert_return_canonical_nan"
+    "assert_trap"
+    "assert_unlinkable"
+    ;; "assert_uninstantiable"             ; XXX: missing from grammar
+    "assert_exhaustion"
+    ;; "assert_exception"                  ; XXX: missing from grammar
+    )
+  "Wast assertion commands.")
+
+(defvar wat-ts--wast-keywords
+  `("binary"                            ; module binary
+    "get"
+    "input"
+    "invoke"
+    "output"
+    "quote"                             ; module quote
+    "register"
+    "script"
+    ,@wat-ts--wast-assertions)
+  "Wast mode keywords.")
 
 (defun wat-ts-mode--font-lock-settings (language)
   "Tree-sitter font-lock settings for LANGUAGE, one of `wat' or `wast'."
@@ -268,32 +296,6 @@
 
 ;; -------------------------------------------------------------------
 ;;; Wast
-
-(defvar wat-ts--wast-assertions
-  '("assert_malformed"
-    "assert_return"
-    "assert_invalid"
-    "assert_return_arithmetic_nan"
-    "assert_return_canonical_nan"
-    "assert_trap"
-    "assert_unlinkable"
-    ;; "assert_uninstantiable"             ; XXX: missing from grammar
-    "assert_exhaustion"
-    ;; "assert_exception"                  ; XXX: missing from grammar
-    )
-  "Wast assertion commands.")
-
-(defvar wat-ts--wast-keywords
-  `("binary"                            ; module binary
-    "get"
-    "input"
-    "invoke"
-    "output"
-    "quote"                             ; module quote
-    "register"
-    "script"
-    ,@wat-ts--wast-assertions)
-  "Wast mode keywords.")
 
 (defun wat-ts--wast-defun-name (node)
   "Return name for NODE or nil if NODE has no name or is invalid."
