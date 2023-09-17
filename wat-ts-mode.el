@@ -26,7 +26,7 @@
 ;;; Commentary:
 ;;
 ;; This package defines tree-sitter enabled major modes for webassembly,
-;; `wat-ts-mode' and `wast-ts-mode', for webassembly text format and script
+;; `wat-ts-mode' and `wat-ts-wast-mode', for webassembly text format and script
 ;; buffers respectively. They provides support for indentation, font-locking,
 ;; imenu, and structural navigation.
 ;;
@@ -51,12 +51,9 @@
 
 (require 'treesit)
 
-(defgroup wat nil
-  "Customization variables for webassembly Wat/Wast modes."
-  :group 'languages)
-
 (defcustom wat-ts-mode-indent-level 2
   "Number of spaces for each indententation step."
+  :group 'wat
   :type 'integer
   :safe 'integerp)
 
@@ -127,7 +124,7 @@
    :language language
    :feature 'keyword
    (append
-    `([,@(append (when (eq 'wast language) wast-ts-mode--keywords)
+    `([,@(append (when (eq 'wast language) wat-ts--wast-keywords)
                  wat-ts-mode--keywords)]
       @font-lock-keyword-face
 
@@ -272,7 +269,7 @@
 ;; -------------------------------------------------------------------
 ;;; Wast
 
-(defvar wast-ts-mode--assertions
+(defvar wat-ts--wast-assertions
   '("assert_malformed"
     "assert_return"
     "assert_invalid"
@@ -286,7 +283,7 @@
     )
   "Wast assertion commands.")
 
-(defvar wast-ts-mode--keywords
+(defvar wat-ts--wast-keywords
   `("binary"                            ; module binary
     "get"
     "input"
@@ -295,10 +292,10 @@
     "quote"                             ; module quote
     "register"
     "script"
-    ,@wast-ts-mode--assertions)
+    ,@wat-ts--wast-assertions)
   "Wast mode keywords.")
 
-(defun wast-ts-mode--defun-name (node)
+(defun wat-ts--wast-defun-name (node)
   "Return name for NODE or nil if NODE has no name or is invalid."
   (or (wat-ts-mode--defun-name node)
       (treesit-node-text
@@ -311,12 +308,12 @@
           (treesit-search-subtree node "identifier" nil nil 1))
          (_ node)))))
 
-(defun wast-ts-mode--valid-imenu-p (node)
+(defun wat-ts--wast-valid-imenu-p (node)
   "Return nil if NODE shouldn't be included in imenu."
-  (wast-ts-mode--defun-name node))
+  (wat-ts--wast-defun-name node))
 
 ;;;###autoload
-(define-derived-mode wast-ts-mode wat-ts-mode "Wast"
+(define-derived-mode wat-ts-wast-mode wat-ts-mode "Wast"
   "Major mode for editing webassembly script buffers.
 
 \\<wat-ts-mode-map>"
@@ -333,7 +330,7 @@
   
   ;; Navigation
   (setq-local treesit-defun-prefer-top-level t)
-  (setq-local treesit-defun-name-function #'wast-ts-mode--defun-name)
+  (setq-local treesit-defun-name-function #'wat-ts--wast-defun-name)
   (setq-local treesit-defun-type-regexp
               (rx bos (or "meta" "register" "module" "script")))
 
@@ -345,16 +342,16 @@
   (setq-local treesit-simple-imenu-settings
               (append treesit-simple-imenu-settings
                       `(("meta" ,(rx bos "meta_" (or "input" "output" "module") eos)
-                         wast-ts-mode--valid-imenu-p nil)
-                        ("register" "\\`register\\'" wast-ts-mode--valid-imenu-p nil)
+                         wat-ts--wast-valid-imenu-p nil)
+                        ("register" "\\`register\\'" wat-ts--wast-valid-imenu-p nil)
                         ("module"
                          ,(rx bos "script_module_" (or "binary" "quote") eos)
-                         wast-ts-mode--valid-imenu-p nil))))
+                         wat-ts--wast-valid-imenu-p nil))))
 
   (treesit-major-mode-setup))
 
 (if (treesit-ready-p 'wast)
-    (add-to-list 'auto-mode-alist '("\\.wast\\'" . wast-ts-mode)))
+    (add-to-list 'auto-mode-alist '("\\.wast\\'" . wat-ts-wast-mode)))
 
 (provide 'wat-ts-mode)
 ;; Local Variables:
