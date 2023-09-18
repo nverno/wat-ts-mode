@@ -218,33 +218,35 @@
   (wat-ts-mode--defun-name node))
 
 (defvar wat-ts-mode--sentence-nodes
-  '("instr_list"
-    "expr"))
+  (rx (or "expr"
+          "instr_list")))
 
 (defvar wat-ts-mode--sexp-nodes
-  '("annotation"
-    "command"
-    "comment"
-    "elem"
-    "expr1_plain"
-    "func"
-    "global"
-    "identifier"
-    "import"
-    "index"
-    "limits"
-    "local"
-    "module"
-    "name"
-    "nat"
-    "num"
-    "offset"
-    "op"
-    "ref"
-    "string"
-    "table"
-    "type"
-    "value"))
+  (rx (or "annotation"
+          "command"
+          "comment"
+          "elem"
+          "export"
+          (seq "expr" eos)
+          (seq "func" eos)
+          "func_locals" "func_type"
+          "global"
+          "identifier"
+          "import"
+          "index"
+          (seq "instr" eos)
+          "local"
+          "module"
+          "name"
+          "nat"
+          "num"
+          "offset"
+          "op"
+          "ref"
+          "string"
+          "table"
+          "type"
+          "value")))
 
 ;;;###autoload
 (define-derived-mode wat-ts-mode prog-mode "Wat"
@@ -281,8 +283,8 @@
   ;; navigation objects
   (setq-local treesit-thing-settings
               `((wat
-                 (sexp ,(regexp-opt wat-ts-mode--sexp-nodes))
-                 (sentence ,(regexp-opt wat-ts-mode--sentence-nodes))
+                 (sexp ,wat-ts-mode--sexp-nodes)
+                 (sentence ,wat-ts-mode--sentence-nodes)
                  (text ,(rx (or "comment_line" "comment_block" "string"))))))
 
   ;; Imenu
