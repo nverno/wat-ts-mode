@@ -64,6 +64,8 @@
     (modify-syntax-entry ?\) ")(4nb" table)
     (modify-syntax-entry ?\; "< 123" table)
     (modify-syntax-entry ?\n ">b" table)
+    (modify-syntax-entry ?. "_" table)
+    (modify-syntax-entry ?_ "w" table)
     table))
 
 (defun wat-ts-mode--indent-rules (language)
@@ -215,22 +217,22 @@
   "Return nil if NODE shouldn't be included in imenu."
   (wat-ts-mode--defun-name node))
 
-(defvar wat-ts-mode--sentence-nodes '())
+(defvar wat-ts-mode--sentence-nodes
+  '("instr_list"
+    "expr"))
 
 (defvar wat-ts-mode--sexp-nodes
   '("annotation"
     "command"
     "comment"
     "elem"
-    "expr"
+    "expr1_plain"
     "func"
     "global"
     "identifier"
     "import"
     "index"
-    "instr"
     "limits"
-    "local"
     "local"
     "module"
     "name"
@@ -280,7 +282,7 @@
   (setq-local treesit-thing-settings
               `((wat
                  (sexp ,(regexp-opt wat-ts-mode--sexp-nodes))
-                 (sentence)
+                 (sentence ,(regexp-opt wat-ts-mode--sentence-nodes))
                  (text ,(rx (or "comment_line" "comment_block" "string"))))))
 
   ;; Imenu
