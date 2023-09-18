@@ -220,6 +220,7 @@
 (defvar wat-ts-mode--sexp-nodes
   '("annotation"
     "command"
+    "comment"
     "elem"
     "expr"
     "func"
