@@ -76,7 +76,7 @@
      ((node-is "end") parent-bol 0)
      ((parent-is "module_field") parent-bol wat-ts-mode-indent-level)
      ((parent-is "instr_list") first-sibling 0)
-     ((parent-is "comment_block") first-sibling 0)
+     ((parent-is "comment_block") no-indent)
      (no-node parent-bol wat-ts-mode-indent-level)
      (catch-all parent-bol wat-ts-mode-indent-level))))
 
