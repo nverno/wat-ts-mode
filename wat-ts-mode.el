@@ -66,16 +66,21 @@
     (modify-syntax-entry ?\n ">b" table)
     (modify-syntax-entry ?. "_" table)
     (modify-syntax-entry ?_ "w" table)
+    (modify-syntax-entry ?$ "'" table)
     table))
 
 (defun wat-ts-mode--indent-rules (language)
   "Tree-sitter indentation rules for LANGUAGE, one of `wat' or `wast'."
   `((,language
      ((parent-is "ROOT") parent 0)
-     ((node-is ")") parent-bol 0)
      ((node-is ";)") parent-bol 0)
+     ((node-is "then") parent-bol 0)
      ((node-is "else") parent-bol 0)
      ((node-is "end") parent-bol 0)
+     ((and (node-is "(") (parent-is "if_block")) parent-bol wat-ts-mode-indent-level)
+     ((and (node-is ")") (parent-is "if_block")) parent-bol wat-ts-mode-indent-level)
+     ((and (node-is "instr_list") (parent-is "if_block")) first-sibling 0)
+     ((node-is ")") parent-bol 0)
      ((parent-is "module_field") parent-bol wat-ts-mode-indent-level)
      ((parent-is "instr_list") first-sibling 0)
      ((parent-is "comment_block") no-indent)
