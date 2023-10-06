@@ -1,4 +1,4 @@
-;;; wat-ts-mode.el --- Major mode for webassembly text format -*- lexical-binding: t; -*-
+;;; wat-ts-mode.el --- Major modes for webassembly text formats using tree sitter -*- lexical-binding: t; -*-
 ;; Author: Noah Peart <noah.v.peart@gmail.com>
 ;; URL: https://github.com/nverno/wat-ts-mode
 ;; Version: 1.0.0
